@@ -3,6 +3,7 @@ const moment = require('moment');
 const path = require('path');
 const _ = require('lodash');
 const jwt = require('jsonwebtoken');
+var http = require('http');
 
 module.exports.Refresh_Param = async function (queryParameter) {
     return new Promise((resolve) => {
@@ -46,15 +47,112 @@ module.exports.textSpaceToOrCond = async function (str) {
         return resolve(undefined);
     });
 }
-//#region loging auth api
+
+// 透過OAuth驗證
+// 參考 https://blog.yorkxin.org/posts/oauth2-6-bearer-token.html
+// Server=https://github.com/pedroetb/node-oauth2-server-example
+module.exports.isOAuthLogin = async function (req,res,next)
+{
+    let isAuthenticated = false; // 驗證是否通過
+
+    // 如果開啟 ENABLE_OAUTH_LOGIN
+    if (process.env.ENABLE_OAUTH_LOGIN == "true")
+    {
+        // 預計傳給Oauth Server的http設定
+        const options = {
+            hostname:  process.env.OAUTHSERVER_HOST,
+            path: '/',
+            port: process.env.OAUTHSERVER_PORT,
+            headers: {
+                Authorization: 'none'
+            }
+        }
+        
+        // 檢查 token 是否 放在 HTTP Header 裡面
+        if(req.headers["accessToken"] != undefined)
+        {
+            options.headers["Authorization"] = req.headers["accessToken"];
+        }
+        else if (req.body != undefined) // 檢查 token 是否 放在 Request Body 裡面（application/json )
+        {
+            console.log("body=" + req.body);
+            try
+            {
+                options.headers["Authorization"] = JSON.parse(req.body)["Authorization"];
+            }
+            catch(ex)
+            {
+                options.headers["Authorization"] = 'none';
+            }
+        }
+
+        // 都沒有放就是沒有token
+        console.log("token=" + options.headers["Authorization"]);
+
+        // 如果有token 則將從headers拿到的token丟給oauth server做驗證
+        if(options.headers["Authorization"] != "none")
+        {
+            // 等待Oauth Server 回復結果
+            await new Promise((resolve) => 
+            {
+                http.get(options, (response) => 
+                {
+                    var result = ''
+
+                    // 資料傳輸中
+                    response.on('data', function (chunk) 
+                    {
+                        result += chunk;
+                    });
+
+                    // 資料傳輸結束
+                    response.on('end', function () 
+                    {
+                        console.log("status=" + response.statusCode);
+                        // 傳回的結果如果等於200代表成功 其他則為失敗
+                        if(response.statusCode == 200)
+                        {
+                            isAuthenticated = true;
+                        }
+
+                        // 結束promise的等待
+                        resolve();
+                    });
+                });
+            })
+        }
+    }
+    else // 未開啟則直接成功
+    {
+        isAuthenticated = true;
+    }
+
+    // 如果驗證通過就繼續
+    if (isAuthenticated) 
+    {
+        return next();
+    }
+
+    // 否則就回401
+    res.status(401);
+    res.render(path.join(__dirname + "/../public/html/errors", "401.html"));
+}
+
+//#region loging auth api 
+// 透過一般登入系統登入
 module.exports.isLogin = async function (req, res, next) {
-    console.log(req.isAuthenticated() + " " + req.user + " Is LoggedIn");
+    let isAuthenticated = false; // 驗證是否通過
+    console.log("Normal Login - " + req.isAuthenticated() + " " + req.user + " Is LoggedIn");
     let isNormalLogin = req.isAuthenticated();
     let isTokenLogin = await exports.isTokenLogin(req);
-    let isAuthenticated = (isNormalLogin || isTokenLogin);
+    isAuthenticated = (isNormalLogin || isTokenLogin);
+
+    // 如果驗證通過就繼續
     if (isAuthenticated) {
         return next();
     }
+
+    // 否則就回401
     res.status(401);
     res.render(path.join(__dirname + "/../public/html/errors", "401.html"));
 }

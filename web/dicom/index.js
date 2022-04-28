@@ -3,7 +3,9 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const {isAdminLogin , isLogin}  =require('../../api/Api_function');
+const {isAdminLogin , isLogin, isOAuthLogin}  =require('../../api/Api_function');
+
+//if (process.env.ENABLE_OAUTH_LOGIN=="true") router.use(isOAuthLogin);
 
 function loginCallback(req, res, next) {
   if (process.env.ENABLE_LOGIN_ACCESS== "true") {
