@@ -7,23 +7,23 @@ const { validateParams } = require('../validator');
 const _ = require('lodash');
 
 if (process.env.ENABLE_LOGIN_ACCESS=="true") router.use(isLogin);
-if (process.env.ENABLE_OAUTH_LOGIN=="true") router.use(isOAuthLogin);
+//if (process.env.ENABLE_OAUTH_LOGIN=="true") router.use(isOAuthLogin);
 
 //#region wado-rs
-router.get('/studies/:studyID' ,require('./controller/wado-rs'));
-router.get('/studies/:studyID/series/:seriesID' ,require('./controller/wado-rs'));
-router.get('/studies/:studyID/series/:seriesID/instances/:instanceID' , require('./controller/wado-rs'));
+router.get('/studies/:studyID' ,isOAuthLogin ,require('./controller/wado-rs'));
+router.get('/studies/:studyID/series/:seriesID' ,isOAuthLogin ,require('./controller/wado-rs'));
+router.get('/studies/:studyID/series/:seriesID/instances/:instanceID' ,isOAuthLogin ,require('./controller/wado-rs'));
 //#endregion
 
 //#region wado-rs-bulkdata
-router.get('/studies/:studyUID/series/:seriesUID/instances/:instanceUID/bulkdata/:objKey' , require('./controller/wado-rs-instances-bulkdata'));
+router.get('/studies/:studyUID/series/:seriesUID/instances/:instanceUID/bulkdata/:objKey' ,isOAuthLogin ,require('./controller/wado-rs-instances-bulkdata'));
 
 //#endregion
 
 //#region frameNumber
-router.get('/studies/:studyID/series/:seriesID/instances/:instanceID/frames/:frameList' , require('./controller/wado-rs-framenumber'));
+router.get('/studies/:studyID/series/:seriesID/instances/:instanceID/frames/:frameList' ,isOAuthLogin ,require('./controller/wado-rs-framenumber'));
 
-router.get('/studies/:studyID/series/:seriesID/instances/:instanceID/frames/:frameNumber/rendered' , validateParams({
+router.get('/studies/:studyID/series/:seriesID/instances/:instanceID/frames/:frameNumber/rendered' ,isOAuthLogin ,validateParams({
     frameNumber : Joi.number().integer().min(1)
 } , "params" , {allowUnknown : true}), validateParams({
     quality: Joi.number().integer().min(1).max(100),
