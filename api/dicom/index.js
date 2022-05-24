@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { isNumber } = require('lodash');
 const router = express.Router();
 const {validateParams} = require("../validator");
+const {isLogin,isOAuthLogin} = require('../Api_function');
 
 
 router.get('/wado/' , validateParams({
@@ -31,7 +32,7 @@ router.get('/wado/' , validateParams({
     rows: Joi.number().min(1),
     columns: Joi.number().min(1),
     iccprofile: Joi.string().default("no").valid("no", "yes", "srgb", "adobergb", "rommrgb")
-} , "query" , {allowUnknown : false}),require('api/dicom/controller/wado'));
+} , "query" , {allowUnknown : false}),isOAuthLogin,require('api/dicom/controller/wado'));
 
 router.get('/qido/studies/' ,validateParams({
     limit : Joi.number().integer() , 

@@ -3,7 +3,8 @@ const moment = require('moment');
 const path = require('path');
 const _ = require('lodash');
 const jwt = require('jsonwebtoken');
-var http = require('http');
+var https = require('https');
+var http = require('https');
 
 module.exports.Refresh_Param = async function (queryParameter) {
     return new Promise((resolve) => {
@@ -61,24 +62,23 @@ module.exports.isOAuthLogin = async function (req,res,next)
         // 預計傳給Oauth Server的http設定
         const options = {
             hostname:  process.env.OAUTHSERVER_HOST,
-            path: '/',
+            path:  process.env.OAUTHSERVER_PATH,
             port: process.env.OAUTHSERVER_PORT,
             headers: {
                 Authorization: 'none'
             }
         }
         
-        // 檢查 token 是否 放在 HTTP Header 裡面
-        if(req.headers["accessToken"] != undefined)
+        // 檢查 token 是否 放在 HTTP Header 裡面的 authorization 欄位
+        if(req.headers["authorization"] != undefined)
         {
-            options.headers["Authorization"] = req.headers["accessToken"];
+            options.headers["Authorization"] = req.headers["authorization"];
         }
-        else if (req.body != undefined) // 檢查 token 是否 放在 Request Body 裡面（application/json )
+        else if (req.body != undefined && req.body["Authorization"] != undefined) // 檢查 token 是否 放在 Request Body 裡面（application/json )
         {
-            console.log("body=" + req.body);
             try
             {
-                options.headers["Authorization"] = JSON.parse(req.body)["Authorization"];
+                options.headers["Authorization"] = req.body["Authorization"];
             }
             catch(ex)
             {
@@ -95,30 +95,60 @@ module.exports.isOAuthLogin = async function (req,res,next)
             // 等待Oauth Server 回復結果
             await new Promise((resolve) => 
             {
-                http.get(options, (response) => 
+                if(process.env.OAUTHSERVER_HTTP == "https")
                 {
-                    var result = ''
-
-                    // 資料傳輸中
-                    response.on('data', function (chunk) 
+                    https.get(options, (response) => 
                     {
-                        result += chunk;
-                    });
-
-                    // 資料傳輸結束
-                    response.on('end', function () 
-                    {
-                        console.log("status=" + response.statusCode);
-                        // 傳回的結果如果等於200代表成功 其他則為失敗
-                        if(response.statusCode == 200)
+                        var result = ''
+    
+                        // 資料傳輸中
+                        response.on('data', function (chunk) 
                         {
-                            isAuthenticated = true;
-                        }
-
-                        // 結束promise的等待
-                        resolve();
+                            result += chunk;
+                        });
+    
+                        // 資料傳輸結束
+                        response.on('end', function () 
+                        {
+                            console.log("(using https)status=" + response.statusCode);
+                            // 傳回的結果如果等於200代表成功 其他則為失敗
+                            if(response.statusCode == 200)
+                            {
+                                isAuthenticated = true;
+                            }
+                            console.log(result);
+                            // 結束promise的等待
+                            resolve();
+                        });
                     });
-                });
+                }
+                else
+                {
+                    http.get(options, (response) => 
+                    {
+                        var result = ''
+    
+                        // 資料傳輸中
+                        response.on('data', function (chunk) 
+                        {
+                            result += chunk;
+                        });
+    
+                        // 資料傳輸結束
+                        response.on('end', function () 
+                        {
+                            console.log("(using http)status=" + response.statusCode);
+                            // 傳回的結果如果等於200代表成功 其他則為失敗
+                            if(response.statusCode == 200)
+                            {
+                                isAuthenticated = true;
+                            }
+                            console.log(result);
+                            // 結束promise的等待
+                            resolve();
+                        });
+                    });
+                }
             })
         }
     }
