@@ -74,19 +74,8 @@ module.exports.isOAuthLogin = async function (req,res,next)
         {
             options.headers["Authorization"] = req.headers["authorization"];
         }
-        else if (req.body != undefined && req.body["Authorization"] != undefined) // 檢查 token 是否 放在 Request Body 裡面（application/json )
-        {
-            try
-            {
-                options.headers["Authorization"] = req.body["Authorization"];
-            }
-            catch(ex)
-            {
-                options.headers["Authorization"] = 'none';
-            }
-        }
 
-        // 都沒有放就是沒有token
+        // 沒有放就是沒有token
         console.log("token=" + options.headers["Authorization"]);
 
         // 如果有token 則將從headers拿到的token丟給oauth server做驗證
